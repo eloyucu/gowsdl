@@ -288,6 +288,33 @@ func (s *Client) CallContext(ctx context.Context, soapAction string, request, re
 func (s *Client) Call(soapAction string, request, response interface{}) error {
 	return s.call(context.Background(), soapAction, request, response)
 }
+func (s *Client) GetRequest(request interface{}) (SOAPEnvelope, error) {
+	envelope := SOAPEnvelope{}
+
+	if s.headers != nil && len(s.headers) > 0 {
+		envelope.Header = &SOAPHeader{
+			Headers: s.headers,
+		}
+	}
+
+	envelope.Body.Content = request
+	buffer := new(bytes.Buffer)
+	var encoder SOAPEncoder
+	if s.opts.mtom {
+		encoder = newMtomEncoder(buffer)
+	} else {
+		encoder = xml.NewEncoder(buffer)
+	}
+
+	if err := encoder.Encode(envelope); err != nil {
+		return envelope, err
+	}
+
+	if err := encoder.Flush(); err != nil {
+		return envelope, err
+	}
+	return envelope, nil
+}
 
 func (s *Client) call(ctx context.Context, soapAction string, request, response interface{}) error {
 	envelope := SOAPEnvelope{}

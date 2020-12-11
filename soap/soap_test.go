@@ -7,6 +7,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/andreyvit/diff"
+	"github.com/clbanning/mxj"
+	"github.com/tdewolff/minify"
+	xmlminify "github.com/tdewolff/minify/xml"
 )
 
 type Ping struct {
@@ -144,4 +149,112 @@ func TestClient_MTOM(t *testing.T) {
 	if reply.Attachment.ContentType() != req.Attachment.ContentType() {
 		t.Errorf("got %s wanted %s", reply.Attachment.Bytes(), req.Attachment.ContentType())
 	}
+}
+
+func TestGetEnvelope(t *testing.T) {
+	// Credentials is Credentials
+	type Credentials struct {
+		XMLName  xml.Name `xml:"http://www.namespace.ninja Credentials,omitempty" json:"-"`
+		Login    string   `xml:"Login" json:"login" jsonschema:"required, title: Login"`
+		Password string   `xml:"Password" json:"password" jsonschema:"required, title: Password"`
+	}
+	// CredentialsHeader is a 'Header' element with credentials inside
+	type CredentialsHeader struct {
+		XMLName     xml.Name `xml:"http://schemas.xmlsoap.org/soap/envelope/ Header,omitempty"`
+		Credentials Credentials
+	}
+	type Item struct {
+		Type  string `xml:"type,attr,omitempty"`
+		Value string `xml:",omitempty"`
+	}
+	type MessageRequest struct {
+		XMLName    xml.Name `xml:"http://www.midoco.de/order MessageRequest"`
+		FirstItem  Item
+		SecondItem []Item
+	}
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	SOAPClient := NewClient(ts.URL)
+	SOAPClient.AddHeader(CredentialsHeader{
+		Credentials: Credentials{
+			Login:    "login_value",
+			Password: "password_value",
+		},
+	})
+	body := MessageRequest{
+		FirstItem: Item{
+			Type:  "item_1",
+			Value: "value_1",
+		},
+		SecondItem: []Item{
+			{
+				Type:  "item_2_1",
+				Value: "value_2_1",
+			},
+			{
+				Type:  "item_2_2",
+				Value: "value_2_2",
+			},
+		},
+	}
+	envelope, err := SOAPClient.GetRequest(body)
+	if err != nil {
+		t.Errorf("Something went wrong trying to get the request (GetRequest): %v", err)
+	} else {
+		output, err := xml.MarshalIndent(envelope, "  ", "    ")
+		if err != nil {
+			t.Errorf("Something went wrong trying to marshal request: %v", err)
+		}
+
+		expected := `<Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/">
+			<Header xmlns="http://schemas.xmlsoap.org/soap/envelope/">
+				<Header xmlns="http://schemas.xmlsoap.org/soap/envelope/">
+					<Credentials xmlns="http://www.namespace.ninja">
+						<Login>login_value</Login>
+						<Password>password_value</Password>
+					</Credentials>
+				</Header>
+			</Header>
+			<Body xmlns="http://schemas.xmlsoap.org/soap/envelope/">
+				<MessageRequest xmlns="http://www.midoco.de/order">
+					<FirstItem type="item_1">
+						<Value>value_1</Value>
+					</FirstItem>
+					<SecondItem type="item_2_1">
+						<Value>value_2_1</Value>
+					</SecondItem>
+					<SecondItem type="item_2_2">
+						<Value>value_2_2</Value>
+					</SecondItem>
+				</MessageRequest>
+			</Body>
+		</Envelope>`
+		if !compareXMLs(expected, string(output)) {
+			a, _ := mxj.BeautifyXml([]byte(expected), "", "  ")
+			b, _ := mxj.BeautifyXml(output, "", "  ")
+			aStr := string(a)
+			bStr := string(b)
+			// ioutil.WriteFile(tt.outputXMLFile, []byte(prettifyXML(midocoReqBody)), os.ModePerm)
+			t.Errorf("Output differ from a golden file: \n%v", diff.LineDiff(aStr, bStr))
+		}
+	}
+
+}
+
+func compareXMLs(output, expected string) bool {
+	m := minify.New()
+
+	r := bytes.NewBufferString(output)
+	w := &bytes.Buffer{}
+	xmlminify.Minify(m, w, r, nil)
+	output = w.String()
+
+	w = &bytes.Buffer{}
+	r = bytes.NewBufferString(expected)
+	xmlminify.Minify(m, w, r, nil)
+	expected = w.String()
+
+	if output == expected {
+		return true
+	}
+	return false
 }
