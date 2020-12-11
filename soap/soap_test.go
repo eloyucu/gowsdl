@@ -158,11 +158,6 @@ func TestGetEnvelope(t *testing.T) {
 		Login    string   `xml:"Login" json:"login" jsonschema:"required, title: Login"`
 		Password string   `xml:"Password" json:"password" jsonschema:"required, title: Password"`
 	}
-	// CredentialsHeader is a 'Header' element with credentials inside
-	// type CredentialsHeader struct {
-	// 	XMLName     xml.Name `xml:"http://schemas.xmlsoap.org/soap/envelope/ Header,omitempty"`
-	// 	Credentials Credentials
-	// }
 	type Item struct {
 		Type  string `xml:"type,attr,omitempty"`
 		Value string `xml:",omitempty"`
