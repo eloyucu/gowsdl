@@ -19,6 +19,9 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/tdewolff/minify"
+	xmlminify "github.com/tdewolff/minify/xml"
 )
 
 func TestElementGenerationDoesntCommentOutStructProperty(t *testing.T) {
@@ -184,7 +187,7 @@ func TestEPCISWSDL(t *testing.T) {
 
 	actual := string(source)
 	expected := string(expectedBytes)
-	if actual != expected {
+	if !compareResults(actual, expected) {
 		_ = ioutil.WriteFile("./fixtures/epcis/epcisquery_gen.src", source, 0664)
 		t.Error("got source ./fixtures/epcis/epcisquery_gen.src but expected ./fixtures/epcis/epcisquery.src")
 	}
@@ -212,4 +215,23 @@ func getTypeDeclaration(resp map[string][]byte, name string) (string, error) {
 		return "", err
 	}
 	return buf.String(), nil
+}
+
+func compareResults(output, expected string) bool {
+	m := minify.New()
+
+	r := bytes.NewBufferString(output)
+	w := &bytes.Buffer{}
+	xmlminify.Minify(m, w, r, nil)
+	output = w.String()
+
+	w = &bytes.Buffer{}
+	r = bytes.NewBufferString(expected)
+	xmlminify.Minify(m, w, r, nil)
+	expected = w.String()
+
+	if output == expected {
+		return true
+	}
+	return false
 }

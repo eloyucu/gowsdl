@@ -159,10 +159,10 @@ func TestGetEnvelope(t *testing.T) {
 		Password string   `xml:"Password" json:"password" jsonschema:"required, title: Password"`
 	}
 	// CredentialsHeader is a 'Header' element with credentials inside
-	type CredentialsHeader struct {
-		XMLName     xml.Name `xml:"http://schemas.xmlsoap.org/soap/envelope/ Header,omitempty"`
-		Credentials Credentials
-	}
+	// type CredentialsHeader struct {
+	// 	XMLName     xml.Name `xml:"http://schemas.xmlsoap.org/soap/envelope/ Header,omitempty"`
+	// 	Credentials Credentials
+	// }
 	type Item struct {
 		Type  string `xml:"type,attr,omitempty"`
 		Value string `xml:",omitempty"`
@@ -174,11 +174,9 @@ func TestGetEnvelope(t *testing.T) {
 	}
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	SOAPClient := NewClient(ts.URL)
-	SOAPClient.AddHeader(CredentialsHeader{
-		Credentials: Credentials{
-			Login:    "login_value",
-			Password: "password_value",
-		},
+	SOAPClient.AddHeader(Credentials{
+		Login:    "login_value",
+		Password: "password_value",
 	})
 	body := MessageRequest{
 		FirstItem: Item{
@@ -207,12 +205,10 @@ func TestGetEnvelope(t *testing.T) {
 
 		expected := `<Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/">
 			<Header xmlns="http://schemas.xmlsoap.org/soap/envelope/">
-				<Header xmlns="http://schemas.xmlsoap.org/soap/envelope/">
-					<Credentials xmlns="http://www.namespace.ninja">
-						<Login>login_value</Login>
-						<Password>password_value</Password>
-					</Credentials>
-				</Header>
+				<Credentials xmlns="http://www.namespace.ninja">
+					<Login>login_value</Login>
+					<Password>password_value</Password>
+				</Credentials>
 			</Header>
 			<Body xmlns="http://schemas.xmlsoap.org/soap/envelope/">
 				<MessageRequest xmlns="http://www.midoco.de/order">

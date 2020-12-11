@@ -88,9 +88,9 @@ func TestLocation_Parse_File(t *testing.T) {
 		ref      string
 		expected string
 	}{
-		{"fixtures/test.wsdl", "some.xsd", "fixtures/some.xsd"},
-		{"fixtures/test.wsdl", "../xsd/some.xsd", "xsd/some.xsd"},
-		{"fixtures/test.wsdl", "xsd/some.xsd", "fixtures/xsd/some.xsd"},
+		{"fixtures/test.wsdl", "some.xsd", filepath.Join("fixtures", "some.xsd")},
+		{"fixtures/test.wsdl", "../xsd/some.xsd", filepath.Join("xsd", "some.xsd")},
+		{"fixtures/test.wsdl", "xsd/some.xsd", filepath.Join("fixtures", "xsd", "some.xsd")},
 	}
 	for _, test := range tests {
 		r, err := ParseLocation(test.name)
@@ -111,7 +111,7 @@ func TestLocation_Parse_File(t *testing.T) {
 		x, _ := filepath.Abs("")
 		rel, _ := filepath.Rel(x, r.String())
 		if rel != test.expected {
-			t.Error("got " + rel + " wanted " + test.expected)
+			t.Error("got |" + rel + "| wanted |" + test.expected + "|")
 		}
 	}
 }
